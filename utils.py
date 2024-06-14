@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Apr 29 11:12:18 2023
-
-@author: yumouwei
-"""
 import numpy as np
 import cv2
 import os
@@ -22,7 +15,6 @@ def load_data_from_dir(set_df, resize=False, dim=(256, 256)):
     image_stack = []
     mask_stack = []
     for img, msk in tqdm(zip(set_df['image'], set_df['mask'])):
-    #for index, row in tqdm(set_df.iterrows()): # iterrows() is significantly slower 
         # load image
         image = cv2.imread(os.path.join(data_dir, img))# cv2 uses BGR order
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)   # BGR -> RGB
