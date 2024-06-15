@@ -21,25 +21,25 @@ def build_unet(input_shape, num_classes, num_filters=16, kernel_size=3):
     x = layers.Activation('relu')(x)
     x = layers.Conv2D(num_filters, kernel_size, padding='same')(x)
     e1 = layers.Activation('relu')(x)
-    p1 = layers.MaxPooling2D(2)(e1)
+    p1 = layers.MaxPooling2D(2, data_format='channels_first')(e1)
 
     x = layers.Conv2D(num_filters * 2, kernel_size, padding='same')(p1)
     x = layers.Activation('relu')(x)
     x = layers.Conv2D(num_filters * 2, kernel_size, padding='same')(x)
     e2 = layers.Activation('relu')(x)
-    p2 = layers.MaxPooling2D(2)(e2)
+    p2 = layers.MaxPooling2D(2, data_format='channels_first')(e2)
 
     x = layers.Conv2D(num_filters * 4, kernel_size, padding='same')(p2)
     x = layers.Activation('relu')(x)
     x = layers.Conv2D(num_filters * 4, kernel_size, padding='same')(x)
     e3 = layers.Activation('relu')(x)
-    p3 = layers.MaxPooling2D(2)(e3)
+    p3 = layers.MaxPooling2D(2, data_format='channels_first')(e3)
 
     x = layers.Conv2D(num_filters * 8, kernel_size, padding='same')(p3)
     x = layers.Activation('relu')(x)
     x = layers.Conv2D(num_filters * 8, kernel_size, padding='same')(x)
     e4 = layers.Activation('relu')(x)
-    p4 = layers.MaxPooling2D(2)(e4)
+    p4 = layers.MaxPooling2D(2, data_format='channels_first')(e4)
 
     # Latent space
     x = layers.Conv2D(num_filters * 16, kernel_size, padding='same')(p4)
