@@ -18,10 +18,10 @@ def encoder_block(x, num_filters, kernel_size):
 
 def bottleneck(x, num_filters, kernel_size):
     # conv 3x3, ReLu
-    x = layers.Conv2D(num_filters * 16, kernel_size, padding='same')(x)
+    x = layers.Conv2D(num_filters, kernel_size, padding='same')(x)
     x = layers.Activation('relu')(x)
     # conv 3x3, ReLu
-    x = layers.Conv2D(num_filters * 16, kernel_size, padding='same')(x)
+    x = layers.Conv2D(num_filters, kernel_size, padding='same')(x)
     x = layers.Activation('relu')(x)
     return x
 
