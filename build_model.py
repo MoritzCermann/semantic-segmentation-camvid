@@ -2,10 +2,43 @@
 
 from tensorflow.keras import layers, Model, Input
 
-activation = 'relu'
-# upconv_kernel_size = (3,3)
 
+def encoder_block(x, num_filters, kernel_size):
+    # conv 3x3, ReLu
+    x = layers.Conv2D(num_filters, kernel_size, padding='same')(x)
+    x = layers.Activation('relu')(x)
+    # conv 3x3, ReLu
+    x = layers.Conv2D(num_filters, kernel_size, padding='same')(x)
+    x = layers.Activation('relu')(x)
+    
+    skip_connection = x
+    # max pool 2x2
+    x = layers.MaxPooling2D(2)(x)
+    return x, skip_connection
 
+def bottleneck(x, num_filters, kernel_size):
+    # conv 3x3, ReLu
+    x = layers.Conv2D(num_filters * 16, kernel_size, padding='same')(x)
+    x = layers.Activation('relu')(x)
+    # conv 3x3, ReLu
+    x = layers.Conv2D(num_filters * 16, kernel_size, padding='same')(x)
+    x = layers.Activation('relu')(x)
+    return x
+
+def decoder_block(x, skip_layer, num_filters, kernel_size):
+    # up-conv 2x2
+    x = layers.Conv2DTranspose(num_filters, (2, 2), strides=2, padding='same')(x)
+    # concatenate with copy
+    x = layers.concatenate([x, skip_layer], axis=-1)
+    # conv 3x3, ReLu
+    x = layers.Conv2D(num_filters, kernel_size, padding='same')(x)
+    x = layers.Activation('relu')(x)
+    # conv 3x3, ReLu
+    x = layers.Conv2D(num_filters, kernel_size, padding='same')(x)
+    x = layers.Activation('relu')(x)    
+    return x
+    
+    
 def build_unet(input_shape, num_classes, num_filters=16, kernel_size=3):
     '''
     Build a U-Net model
@@ -13,73 +46,22 @@ def build_unet(input_shape, num_classes, num_filters=16, kernel_size=3):
     '''
     inputs = Input(input_shape)
 
-    # Transpose the input to (Channels, Height, Width)
-    #x = layers.Lambda(lambda x: tf.transpose(x, (0, 3, 1, 2)))(inputs)
+    # Encoder - Contracting path - Downsampling
+    e1, skip_e1 = encoder_block(inputs, num_filters, kernel_size)
+    e2, skip_e2 = encoder_block(e1, num_filters * 2, kernel_size)
+    e3, skip_e3 = encoder_block(e2, num_filters * 4, kernel_size)
+    e4, skip_e4 = encoder_block(e3, num_filters * 8, kernel_size)
 
-    # Encoder
-    x = layers.Conv2D(num_filters, kernel_size, padding='same', data_format='channels_first')(inputs)
-    x = layers.Activation('relu')(x)
-    x = layers.Conv2D(num_filters, kernel_size, padding='same', data_format='channels_first')(x)
-    e1 = layers.Activation('relu')(x)
-    p1 = layers.MaxPooling2D(2, data_format='channels_first')(e1)
+    # Bottleneck - Lowest layer
+    lowest_layer = bottleneck(e4, num_filters * 16, kernel_size)
 
-    x = layers.Conv2D(num_filters * 2, kernel_size, padding='same', data_format='channels_first')(p1)
-    x = layers.Activation('relu')(x)
-    x = layers.Conv2D(num_filters * 2, kernel_size, padding='same', data_format='channels_first')(x)
-    e2 = layers.Activation('relu')(x)
-    p2 = layers.MaxPooling2D(2, data_format='channels_first')(e2)
+    # Decoder - Expanding Path - Upsampling
+    d4 = decoder_block(lowest_layer, skip_e4, num_filters * 8, kernel_size)
+    d3 = decoder_block(d4, skip_e3, num_filters * 4, kernel_size)
+    d2 = decoder_block(d3, skip_e2, num_filters * 2, kernel_size)
+    d1 = decoder_block(d2, skip_e1, num_filters, kernel_size)
 
-    x = layers.Conv2D(num_filters * 4, kernel_size, padding='same', data_format='channels_first')(p2)
-    x = layers.Activation('relu')(x)
-    x = layers.Conv2D(num_filters * 4, kernel_size, padding='same', data_format='channels_first')(x)
-    e3 = layers.Activation('relu')(x)
-    p3 = layers.MaxPooling2D(2, data_format='channels_first')(e3)
-
-    x = layers.Conv2D(num_filters * 8, kernel_size, padding='same', data_format='channels_first')(p3)
-    x = layers.Activation('relu')(x)
-    x = layers.Conv2D(num_filters * 8, kernel_size, padding='same', data_format='channels_first')(x)
-    e4 = layers.Activation('relu')(x)
-    p4 = layers.MaxPooling2D(2, data_format='channels_first')(e4)
-
-    # Latent space
-    x = layers.Conv2D(num_filters * 16, kernel_size, padding='same', data_format='channels_first')(p4)
-    x = layers.Activation('relu')(x)
-    x = layers.Conv2D(num_filters * 16, kernel_size, padding='same', data_format='channels_first')(x)
-    latent = layers.Activation('relu')(x)
-
-    # Decoder
-    x = layers.Conv2DTranspose(num_filters * 8, 2, strides=2, padding='same', data_format='channels_first')(latent)
-    x = layers.concatenate([x, e4], axis=1)  # Channels axis
-    x = layers.Conv2D(num_filters * 8, kernel_size, padding='same', data_format='channels_first')(x)
-    x = layers.Activation('relu')(x)
-    x = layers.Conv2D(num_filters * 8, kernel_size, padding='same', data_format='channels_first')(x)
-    d4 = layers.Activation('relu')(x)
-
-    x = layers.Conv2DTranspose(num_filters * 4, 2, strides=2, padding='same', data_format='channels_first')(d4)
-    x = layers.concatenate([x, e3], axis=1)  # Channels axis
-    x = layers.Conv2D(num_filters * 4, kernel_size, padding='same', data_format='channels_first')(x)
-    x = layers.Activation('relu')(x)
-    x = layers.Conv2D(num_filters * 4, kernel_size, padding='same', data_format='channels_first')(x)
-    d3 = layers.Activation('relu')(x)
-
-    x = layers.Conv2DTranspose(num_filters * 2, 2, strides=2, padding='same', data_format='channels_first')(d3)
-    x = layers.concatenate([x, e2], axis=1)  # Channels axis
-    x = layers.Conv2D(num_filters * 2, kernel_size, padding='same', data_format='channels_first')(x)
-    x = layers.Activation('relu')(x)
-    x = layers.Conv2D(num_filters * 2, kernel_size, padding='same', data_format='channels_first')(x)
-    d2 = layers.Activation('relu')(x)
-
-    x = layers.Conv2DTranspose(num_filters, 2, strides=2, padding='same', data_format='channels_first')(d2)
-    x = layers.concatenate([x, e1], axis=1)  # Channels axis
-    x = layers.Conv2D(num_filters, kernel_size, padding='same', data_format='channels_first')(x)
-    x = layers.Activation('relu')(x)
-    x = layers.Conv2D(num_filters, kernel_size, padding='same', data_format='channels_first')(x)
-    d1 = layers.Activation('relu')(x)
-
-    # Transpose the output back to (Height, Width, Channels)
-    #x = layers.Lambda(lambda x: tf.transpose(x, (0, 2, 3, 1)))(d1)
-
-    outputs = layers.Conv2D(num_classes, 1, padding="same", activation="softmax", data_format='channels_first')(d1)
+    # conv 1x1
+    outputs = layers.Conv2D(num_classes, 1, padding="same", activation="softmax")(d1)
     model = Model(inputs, outputs, name='U-Net')
     return model
-
