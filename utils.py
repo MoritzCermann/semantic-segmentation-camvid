@@ -5,6 +5,8 @@ from tqdm import tqdm
 
 base_dir = base_dir = os.getcwd()
 
+# most of these functions are from the github user yumouwei: https://github.com/yumouwei
+
 def load_data_from_dir(set_df, resize=False, dim=(256, 256)):
     '''
     Load images and masks into two N-D arrays
