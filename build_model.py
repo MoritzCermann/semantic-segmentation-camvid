@@ -28,6 +28,7 @@ def bottleneck(x, num_filters, kernel_size):
 def decoder_block(x, skip_layer, num_filters, kernel_size):
     # up-conv 2x2
     x = layers.Conv2DTranspose(num_filters, (2, 2), strides=2, padding='same')(x)
+
     # concatenate with copy
     x = layers.concatenate([x, skip_layer], axis=-1)
     # conv 3x3, ReLu
